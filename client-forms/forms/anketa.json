@@ -1,0 +1,173 @@
+{
+  "id": "anketa",
+  "title": "Анкета клиента",
+  "organization": "ООО «Компания»",
+  "version": "1.0",
+  "sections": [
+    {
+      "title": "Личные данные",
+      "fields": [
+        {
+          "name": "lastName",
+          "label": "Фамилия",
+          "type": "text",
+          "required": true,
+          "maxLength": 60,
+          "autocomplete": "family-name"
+        },
+        {
+          "name": "firstName",
+          "label": "Имя",
+          "type": "text",
+          "required": true,
+          "maxLength": 60,
+          "autocomplete": "given-name"
+        },
+        {
+          "name": "middleName",
+          "label": "Отчество",
+          "type": "text",
+          "required": false,
+          "maxLength": 60,
+          "autocomplete": "additional-name"
+        },
+        {
+          "name": "birthDate",
+          "label": "Дата рождения",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "gender",
+          "label": "Пол",
+          "type": "radio",
+          "required": false,
+          "options": ["Мужской", "Женский"]
+        }
+      ]
+    },
+    {
+      "title": "Контактные данные",
+      "fields": [
+        {
+          "name": "phone",
+          "label": "Телефон",
+          "type": "tel",
+          "required": true,
+          "maxLength": 30,
+          "pattern": "^[0-9+()\\-\\s]{6,30}$",
+          "placeholder": "+7 (___) ___-__-__",
+          "hint": "Цифры, пробелы и символы + ( ) -",
+          "autocomplete": "tel"
+        },
+        {
+          "name": "email",
+          "label": "Электронная почта",
+          "type": "email",
+          "required": false,
+          "maxLength": 120,
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]{2,}$",
+          "placeholder": "name@example.com",
+          "autocomplete": "email"
+        },
+        {
+          "name": "address",
+          "label": "Адрес проживания",
+          "type": "text",
+          "required": false,
+          "maxLength": 200,
+          "autocomplete": "street-address"
+        }
+      ]
+    },
+    {
+      "title": "Документ, удостоверяющий личность",
+      "fields": [
+        {
+          "name": "docType",
+          "label": "Тип документа",
+          "type": "select",
+          "required": true,
+          "options": ["Паспорт РФ", "Загранпаспорт", "Вид на жительство", "Иной документ"]
+        },
+        {
+          "name": "docNumber",
+          "label": "Серия и номер",
+          "type": "text",
+          "required": true,
+          "maxLength": 40
+        },
+        {
+          "name": "docIssuedBy",
+          "label": "Кем выдан",
+          "type": "textarea",
+          "required": false,
+          "maxLength": 300,
+          "rows": 2
+        },
+        {
+          "name": "docIssueDate",
+          "label": "Дата выдачи",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "title": "Обращение",
+      "fields": [
+        {
+          "name": "service",
+          "label": "Интересующая услуга",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Первичная консультация",
+            "Оформление договора",
+            "Техническое обслуживание",
+            "Претензия или возврат",
+            "Другое"
+          ]
+        },
+        {
+          "name": "source",
+          "label": "Откуда вы о нас узнали",
+          "type": "select",
+          "required": false,
+          "options": ["Поиск в интернете", "Социальные сети", "Рекомендация знакомых", "Наружная реклама", "Другое"]
+        },
+        {
+          "name": "comment",
+          "label": "Комментарий",
+          "type": "textarea",
+          "required": false,
+          "maxLength": 1500,
+          "rows": 4,
+          "hint": "Опишите ваш вопрос, если это необходимо"
+        }
+      ]
+    },
+    {
+      "title": "Согласия",
+      "fields": [
+        {
+          "name": "consentPersonalData",
+          "label": "Я даю согласие на обработку моих персональных данных в соответствии с Федеральным законом № 152-ФЗ «О персональных данных»",
+          "type": "checkbox",
+          "required": true
+        },
+        {
+          "name": "consentMarketing",
+          "label": "Я согласен получать информацию об услугах и специальных предложениях",
+          "type": "checkbox",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "signature": {
+    "label": "Подпись клиента",
+    "required": true,
+    "statement": "Подтверждаю, что указанные в анкете сведения являются полными и достоверными."
+  }
+}
