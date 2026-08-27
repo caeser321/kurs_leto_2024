@@ -1,46 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import crypto from 'node:crypto';
+import { slugify, documentBaseName, documentFolder } from './naming.js';
 
-const TRANSLIT = {
-  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i',
-  й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't',
-  у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '',
-  э: 'e', ю: 'yu', я: 'ya',
-};
-
-/**
- * Приводит имя к безопасному для файловой системы виду.
- * Кириллица транслитерируется: сетевые диски и SMB-шары
- * нередко портят не-ASCII имена файлов.
- */
-export function slugify(text, maxLength = 48) {
-  const slug = String(text)
-    .toLowerCase()
-    .split('')
-    .map((char) => (TRANSLIT[char] !== undefined ? TRANSLIT[char] : char))
-    .join('')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, maxLength)
-    .replace(/-+$/g, '');
-
-  return slug || 'anketa';
-}
-
-/** Человекочитаемый идентификатор документа: 20260816-143022-K3F9QA */
-export function generateDocumentId(now = new Date()) {
-  const pad = (value) => String(value).padStart(2, '0');
-  const stamp =
-    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-` +
-    `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // без похожих друг на друга символов
-  const bytes = crypto.randomBytes(6);
-  const suffix = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
-
-  return `${stamp}-${suffix}`;
-}
+// slugify и generateDocumentId живут в naming.js: их использует и
+// Android-приложение, где нет модулей Node.
+export { slugify, generateDocumentId } from './naming.js';
 
 export class SubmissionStore {
   /** @param {string} sharedDir каталог общего пространства */
@@ -55,9 +19,7 @@ export class SubmissionStore {
 
   /** Документы раскладываются по годам и месяцам, чтобы каталог не разрастался. */
   directoryFor(date) {
-    const year = String(date.getFullYear());
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return path.join(this.sharedDir, year, month);
+    return path.join(this.sharedDir, ...documentFolder(date).split('/'));
   }
 
   /**
@@ -70,7 +32,7 @@ export class SubmissionStore {
     const dir = this.directoryFor(date);
     await fs.mkdir(dir, { recursive: true });
 
-    const baseName = `${documentId}__${slugify(clientName)}`;
+    const baseName = documentBaseName(documentId, clientName);
     const pdfPath = path.join(dir, `${baseName}.pdf`);
     const metaPath = path.join(dir, `${baseName}.json`);
 

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f5fa9" />
+    <title>Анкета клиента</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page__header">
+        <div>
+          <p class="page__org" id="org"></p>
+          <h1 class="page__title" id="title">Анкета клиента</h1>
+        </div>
+        <a class="link" href="archive.html">Архив</a>
+      </header>
+
+      <main>
+        <form id="form" class="card" novalidate hidden>
+          <div id="sections"></div>
+
+          <section class="section" id="signature-section">
+            <h2 class="section__title" id="signature-title">Подпись клиента</h2>
+            <p class="section__note" id="signature-statement"></p>
+
+            <div class="signature">
+              <canvas
+                id="signature-canvas"
+                class="signature__canvas"
+                aria-label="Поле для подписи"
+                role="img"
+              ></canvas>
+              <span class="signature__placeholder" id="signature-placeholder">
+                Распишитесь здесь стилусом или пальцем
+              </span>
+              <span class="signature__baseline" aria-hidden="true"></span>
+            </div>
+
+            <div class="signature__bar">
+              <p class="signature__hint" id="signature-hint">
+                Поддерживается стилус: чем сильнее нажим, тем толще линия.
+              </p>
+              <div class="signature__buttons">
+                <button type="button" class="button button--ghost" id="undo">Отменить штрих</button>
+                <button type="button" class="button button--ghost" id="clear">Очистить</button>
+              </div>
+            </div>
+            <p class="field__error" id="signature-error" hidden></p>
+          </section>
+
+          <div class="actions">
+            <p class="actions__note" id="form-error" hidden></p>
+            <button type="submit" class="button button--primary" id="submit">
+              Сохранить анкету
+            </button>
+          </div>
+        </form>
+
+        <div class="card card--status" id="loading">Загрузка анкеты…</div>
+
+        <div class="card card--success" id="success" hidden>
+          <h2 class="success__title">Анкета сохранена</h2>
+          <p class="success__text">
+            Документ № <strong id="success-id"></strong> сохранён в памяти планшета.
+          </p>
+          <div class="success__actions">
+            <button type="button" class="button button--primary" id="success-share">
+              Отправить PDF
+            </button>
+            <button type="button" class="button button--ghost" id="success-new">
+              Заполнить новую анкету
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

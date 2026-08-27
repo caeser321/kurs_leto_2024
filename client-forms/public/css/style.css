@@ -312,6 +312,13 @@ textarea:focus {
   border-color: #b9c1cd;
 }
 
+/* Компактная кнопка внутри строки таблицы. */
+.button--small {
+  padding: 8px 14px;
+  min-height: 40px;
+  font-size: 15px;
+}
+
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

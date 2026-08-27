@@ -1,7 +1,9 @@
 import express from 'express';
-import { loadForm, validateSubmission, buildClientName } from './schema.js';
+import { validateSubmission, buildClientName } from './schema.js';
+import { loadForm } from './form-file.node.js';
 import { renderSubmissionPdf } from './pdf.js';
 import { SubmissionStore, generateDocumentId } from './storage.js';
+import { loadFontBytes } from './fonts.node.js';
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const MAX_SIGNATURE_BYTES = 4 * 1024 * 1024;
@@ -68,7 +70,7 @@ export async function createApp(config) {
         values,
         signaturePng: signature.buffer,
         meta: { documentId, createdAt, clientName },
-        fontPaths: config.fonts,
+        fontBytes: await loadFontBytes(config.fonts),
       });
 
       const saved = await store.save({

@@ -1,26 +1,28 @@
-import fs from 'node:fs/promises';
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Загружает описание анкеты и проверяет, что оно корректно. */
-export async function loadForm(formFile) {
-  const raw = await fs.readFile(formFile, 'utf8');
-  const form = JSON.parse(raw);
-
-  if (!form.title) throw new Error(`Анкета ${formFile}: не задан title`);
+/**
+ * Проверяет, что описание анкеты пригодно к использованию.
+ * Вызывается и на сервере при чтении файла, и при сборке приложения,
+ * поэтому не обращается к файловой системе.
+ *
+ * @param {object} form разобранное описание анкеты
+ * @param {string} source откуда оно взято — попадёт в текст ошибки
+ */
+export function validateFormDefinition(form, source = 'анкета') {
+  if (!form?.title) throw new Error(`Анкета ${source}: не задан title`);
   if (!Array.isArray(form.sections) || form.sections.length === 0) {
-    throw new Error(`Анкета ${formFile}: не заданы секции (sections)`);
+    throw new Error(`Анкета ${source}: не заданы секции (sections)`);
   }
 
   const seen = new Set();
   for (const field of iterateFields(form)) {
-    if (!field.name) throw new Error(`Анкета ${formFile}: у поля отсутствует name`);
+    if (!field.name) throw new Error(`Анкета ${source}: у поля отсутствует name`);
     if (seen.has(field.name)) {
-      throw new Error(`Анкета ${formFile}: поле "${field.name}" объявлено более одного раза`);
+      throw new Error(`Анкета ${source}: поле "${field.name}" объявлено более одного раза`);
     }
     seen.add(field.name);
     if ((field.type === 'select' || field.type === 'radio') && !Array.isArray(field.options)) {
-      throw new Error(`Анкета ${formFile}: у поля "${field.name}" типа ${field.type} нет options`);
+      throw new Error(`Анкета ${source}: у поля "${field.name}" типа ${field.type} нет options`);
     }
   }
 

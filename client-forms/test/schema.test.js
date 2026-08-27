@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateSubmission, formatValue, buildClientName, loadForm } from '../src/schema.js';
+import { validateSubmission, formatValue, buildClientName } from '../src/schema.js';
+import { loadForm } from '../src/form-file.node.js';
 import { config } from '../src/config.js';
 
 const form = {

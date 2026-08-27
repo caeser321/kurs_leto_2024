@@ -1,4 +1,3 @@
-import fs from 'node:fs/promises';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { formatValue } from './schema.js';
@@ -18,19 +17,6 @@ const COLOR = {
   rule: rgb(0.85, 0.87, 0.9),
   signatureBox: rgb(0.72, 0.75, 0.8),
 };
-
-let fontCache = null;
-
-async function readFonts(fontPaths) {
-  if (!fontCache) {
-    const [regular, bold] = await Promise.all([
-      fs.readFile(fontPaths.regular),
-      fs.readFile(fontPaths.bold),
-    ]);
-    fontCache = { regular, bold };
-  }
-  return fontCache;
-}
 
 /** Убирает управляющие символы, которые ломают отрисовку строки в PDF. */
 function sanitize(text) {
@@ -399,17 +385,25 @@ function formatDateTime(iso) {
 
 /**
  * Собирает PDF анкеты: данные полей + подпись клиента.
+ *
+ * Модуль не обращается к файловой системе: шрифты передаются готовыми
+ * байтами. Благодаря этому один и тот же код работает и на сервере,
+ * и внутри Android-приложения, где PDF собирается прямо на планшете.
+ *
+ * @param {{regular: Uint8Array, bold: Uint8Array}} fontBytes шрифты с кириллицей
  * @returns {Promise<Uint8Array>} содержимое PDF-файла
  */
-export async function renderSubmissionPdf({ form, values, signaturePng, meta, fontPaths }) {
-  const fontFiles = await readFonts(fontPaths);
+export async function renderSubmissionPdf({ form, values, signaturePng, meta, fontBytes }) {
+  if (!fontBytes?.regular || !fontBytes?.bold) {
+    throw new Error('Не переданы шрифты для PDF (fontBytes.regular и fontBytes.bold)');
+  }
 
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
 
   const fonts = {
-    regular: await doc.embedFont(fontFiles.regular, { subset: true }),
-    bold: await doc.embedFont(fontFiles.bold, { subset: true }),
+    regular: await doc.embedFont(fontBytes.regular, { subset: true }),
+    bold: await doc.embedFont(fontBytes.bold, { subset: true }),
   };
 
   doc.setTitle(`${form.title} — ${meta.clientName}`);

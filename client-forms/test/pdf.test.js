@@ -4,8 +4,9 @@ import fs from 'node:fs/promises';
 import { PDFDocument, PDFDict } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { renderSubmissionPdf, wrapText } from '../src/pdf.js';
-import { loadForm } from '../src/schema.js';
+import { loadForm } from '../src/form-file.node.js';
 import { config } from '../src/config.js';
+import { loadFontBytes } from '../src/fonts.node.js';
 
 const PNG_1PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
@@ -43,7 +44,7 @@ async function render(values = baseValues) {
       createdAt: '2026-08-16T14:30:22.000Z',
       clientName: 'Иванов Пётр Сергеевич',
     },
-    fontPaths: config.fonts,
+    fontBytes: await loadFontBytes(config.fonts),
   });
 }
 
@@ -140,7 +141,7 @@ test('анкета без подписи всё равно формируетс�
       createdAt: '2026-08-16T14:30:22.000Z',
       clientName: 'Иванов Пётр Сергеевич',
     },
-    fontPaths: config.fonts,
+    fontBytes: await loadFontBytes(config.fonts),
   });
 
   const doc = await PDFDocument.load(bytes);

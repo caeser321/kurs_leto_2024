@@ -1,0 +1,59 @@
+name: Сборка APK
+
+# Запускается вручную (вкладка Actions -> Сборка APK -> Run workflow)
+# и автоматически, когда меняется приложение.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'client-forms/**'
+      - '.github/workflows/android-apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      # pdf-lib и шрифты живут в родительском пакете: приложение
+      # переиспользует те же модули, что и серверная версия.
+      - name: Зависимости
+        run: |
+          npm ci --prefix client-forms
+          npm ci --prefix client-forms/app
+
+      - name: Проверки серверной части
+        run: npm test --prefix client-forms
+
+      - name: Сборка веб-части и синхронизация с Android
+        working-directory: client-forms/app
+        run: |
+          npm run build
+          npx cap sync android
+
+      - name: Сборка APK
+        working-directory: client-forms/app/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Опубликовать APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: anketa-apk
+          path: client-forms/app/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30
