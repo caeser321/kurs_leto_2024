@@ -12,12 +12,35 @@ import esbuild from 'esbuild';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateFormDefinition } from '../src/schema.js';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(appRoot, '..');
 const www = path.join(appRoot, 'www');
 
 const watch = process.argv.includes('--watch');
+
+// Анкета попадает в APK на этапе сборки, и там её уже никто не проверит.
+// Поэтому ошибку в forms/anketa.json ловим здесь, а не на планшете клиента.
+const formFile = path.join(projectRoot, 'forms/anketa.json');
+let form;
+try {
+  form = JSON.parse(await fs.readFile(formFile, 'utf8'));
+} catch (error) {
+  console.error(`\nОшибка в файле анкеты ${formFile}:\n  ${error.message}\n`);
+  console.error('Похоже на опечатку в JSON — проверьте запятые и кавычки.\n');
+  process.exit(1);
+}
+
+try {
+  validateFormDefinition(form, 'forms/anketa.json');
+} catch (error) {
+  console.error(`\n${error.message}\n`);
+  process.exit(1);
+}
+
+const fieldCount = form.sections.reduce((total, s) => total + (s.fields?.length || 0), 0);
+console.log(`Анкета «${form.title}»: ${form.sections.length} секций, ${fieldCount} полей`);
 
 await fs.rm(www, { recursive: true, force: true });
 await fs.mkdir(path.join(www, 'js'), { recursive: true });
