@@ -4,7 +4,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const STATIC_TYPES = new Set(['notice']);
 
 /** Поля, ответ на которые — список выбранных вариантов. */
-const MULTI_TYPES = new Set(['multiselect']);
+const MULTI_TYPES = new Set(['multiselect', 'checklist']);
 
 export function isStaticField(field) {
   return STATIC_TYPES.has(field.type);
@@ -111,6 +111,14 @@ function emptyValue(field) {
 }
 
 function normalizeValue(field, raw) {
+  if (field.type === 'date') {
+    // В форме дату вводят как ДД.ММ.ГГГГ, а хранить и печатать удобнее
+    // в ISO: так значения сортируются и не зависят от локали.
+    const text = String(raw ?? '').trim();
+    const parts = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text);
+    return parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : text;
+  }
+
   if (field.type === 'checkbox') {
     return raw === true || raw === 'true' || raw === 'on' || raw === 1;
   }
@@ -182,7 +190,7 @@ function validateValue(field, value) {
   }
 
   if (field.type === 'date') {
-    if (!DATE_RE.test(value)) return 'Дата в формате ГГГГ-ММ-ДД';
+    if (!DATE_RE.test(value)) return 'Дата в формате ДД.ММ.ГГГГ';
     const parsed = new Date(`${value}T00:00:00Z`);
     if (Number.isNaN(parsed.getTime())) return 'Некорректная дата';
     // Date автоматически «переносит» несуществующие даты (31.02 → 03.03),

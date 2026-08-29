@@ -81,10 +81,25 @@ test('отклоняет несуществующую дату', () => {
   assert.match(result.errors.birthDate, /не существует/);
 });
 
-test('отклоняет дату в неверном формате', () => {
+test('принимает дату в виде ДД.ММ.ГГГГ и приводит её к ISO', () => {
+  // Именно в таком виде дату набирают в форме — маска подставляет точки.
   const result = validateSubmission(form, { ...validInput, birthDate: '17.05.1990' });
+  assert.equal(result.valid, true);
+  assert.equal(result.values.birthDate, '1990-05-17');
+});
+
+test('несуществующая дата в виде ДД.ММ.ГГГГ отклоняется', () => {
+  const result = validateSubmission(form, { ...validInput, birthDate: '31.02.2024' });
   assert.equal(result.valid, false);
-  assert.match(result.errors.birthDate, /ГГГГ-ММ-ДД/);
+  assert.match(result.errors.birthDate, /не существует/);
+});
+
+test('отклоняет дату в неверном формате', () => {
+  for (const bad of ['17/05/1990', '1990', '17.5.1990', 'вчера']) {
+    const result = validateSubmission(form, { ...validInput, birthDate: bad });
+    assert.equal(result.valid, false, `«${bad}» не должно приниматься`);
+    assert.match(result.errors.birthDate, /ДД\.ММ\.ГГГГ/);
+  }
 });
 
 test('отклоняет значение вне списка select', () => {

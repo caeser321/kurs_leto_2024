@@ -7,9 +7,17 @@
  */
 
 import { isStaticField, isFieldVisible, iterateFields } from '../../src/schema.js';
+import { attachMask, formatDateInput, formatPhoneInput } from './masks.js';
 
 /** Поля, которым тесно в половине строки. */
-const WIDE_TYPES = new Set(['textarea', 'checkbox', 'radio', 'multiselect', 'notice']);
+const WIDE_TYPES = new Set([
+  'textarea',
+  'checkbox',
+  'radio',
+  'multiselect',
+  'checklist',
+  'notice',
+]);
 
 /** Строит разметку всех секций анкеты внутри container. */
 export function buildForm(container, schema) {
@@ -70,6 +78,18 @@ function renderField(container, schema, field) {
     return wrapper;
   }
 
+  if (field.type === 'checklist') {
+    wrapper.classList.add('checklist');
+    wrapper.append(renderChecklist(field));
+
+    const error = document.createElement('p');
+    error.className = 'field__error';
+    error.dataset.errorFor = field.name;
+    error.hidden = true;
+    wrapper.append(error);
+    return wrapper;
+  }
+
   if (field.type !== 'checkbox') wrapper.append(renderLabel(field));
   wrapper.append(renderControl(container, field));
 
@@ -87,6 +107,52 @@ function renderField(container, schema, field) {
   wrapper.append(error);
 
   return wrapper;
+}
+
+/**
+ * Отмечаемый список — замена «обвести ручкой» на бумаге.
+ * Гость касается пункта, и тот подсвечивается; ничего отмечать не обязан.
+ */
+function renderChecklist(field) {
+  const block = document.createElement('div');
+
+  const title = document.createElement('p');
+  title.className = 'checklist__title';
+  title.textContent = field.label;
+  block.append(title);
+
+  const note = document.createElement('p');
+  note.className = 'checklist__note';
+  note.textContent = field.note || 'Отметьте пункты, которые есть у вас';
+  block.append(note);
+
+  const list = document.createElement('div');
+  list.className = 'checklist__items';
+
+  for (const option of field.options) {
+    const item = document.createElement('label');
+    item.className = 'checklist__item';
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.name = field.name;
+    input.value = option;
+
+    const text = document.createElement('span');
+    text.textContent = option;
+
+    // Класс переключаем вручную, а не через :has() в CSS:
+    // на планшетах со старым WebView этот селектор может не работать.
+    input.addEventListener('change', () => {
+      item.classList.toggle('checklist__item--marked', input.checked);
+    });
+
+    item.append(input, text);
+    list.append(item);
+  }
+
+  block.append(list);
+  return block;
 }
 
 function renderLabel(field) {
@@ -189,14 +255,27 @@ function renderControl(container, field) {
 
   if (field.type === 'textarea') {
     input.rows = field.rows || 3;
+  } else if (field.type === 'date') {
+    // Системный календарь Android открывается на сегодняшней дате и листается
+    // по месяцу — искать в нём год рождения мучительно. Поэтому обычное поле
+    // с маской: дату можно просто набрать.
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.maxLength = 10;
+    input.placeholder = field.placeholder || 'дд.мм.гггг';
+    attachMask(input, formatDateInput);
+  } else if (field.type === 'tel') {
+    input.type = 'tel';
+    input.inputMode = 'tel';
+    input.placeholder = field.placeholder || '+7 (___) ___-__-__';
+    attachMask(input, formatPhoneInput, { prefill: '+7' });
   } else {
     input.type = field.type || 'text';
   }
 
-  if (field.maxLength) input.maxLength = field.maxLength;
+  if (field.maxLength && field.type !== 'date') input.maxLength = field.maxLength;
   if (field.placeholder) input.placeholder = field.placeholder;
   if (field.autocomplete) input.autocomplete = field.autocomplete;
-  if (field.type === 'tel') input.inputMode = 'tel';
 
   input.addEventListener('input', forget);
   return input;
@@ -212,7 +291,7 @@ export function collectValues(formElement, schema) {
 
     if (field.type === 'checkbox') {
       values[field.name] = formElement.elements[field.name]?.checked === true;
-    } else if (field.type === 'multiselect') {
+    } else if (field.type === 'multiselect' || field.type === 'checklist') {
       values[field.name] = data.getAll(field.name).map(String);
     } else {
       values[field.name] = (data.get(field.name) || '').toString();

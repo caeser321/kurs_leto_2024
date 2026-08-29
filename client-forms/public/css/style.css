@@ -232,6 +232,65 @@ textarea:focus {
   color: var(--muted);
 }
 
+/* --- Отмечаемый список противопоказаний --- */
+
+.checklist {
+  padding: 16px;
+  background: #f7f9fc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.checklist__title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.checklist__note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.checklist__items {
+  display: grid;
+  gap: 6px;
+}
+
+.checklist__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.checklist__item input {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--danger);
+  flex: none;
+}
+
+/* Отмеченный пункт заметен так же, как обведённый ручкой на бумаге. */
+.checklist__item--marked {
+  background: #fdf2f1;
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
 /* --- Подпись --- */
 
 .signature {

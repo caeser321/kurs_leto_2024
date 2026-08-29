@@ -95,8 +95,13 @@ async function onSubmit(event) {
   event.preventDefault();
   resetErrors();
 
-  const values = collectValues(elements.form, form);
-  const { valid, errors } = validateSubmission(form, values);
+  // Дальше используются именно проверенные значения: в них дата приведена
+  // к единому виду, а ответы на скрытые вопросы очищены. Исходные значения
+  // из формы для документа не годятся.
+  const { valid, errors, values } = validateSubmission(
+    form,
+    collectValues(elements.form, form),
+  );
 
   const signature = pad.toDataURL();
   const signatureRequired = form.signature?.required !== false;

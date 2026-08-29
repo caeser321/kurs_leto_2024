@@ -16,6 +16,7 @@ const COLOR = {
   accent: rgb(0.13, 0.35, 0.62),
   rule: rgb(0.85, 0.87, 0.9),
   signatureBox: rgb(0.72, 0.75, 0.8),
+  danger: rgb(0.65, 0.11, 0.09),
 };
 
 /** Убирает управляющие символы, которые ломают отрисовку строки в PDF. */
@@ -264,6 +265,74 @@ function drawNotice(layout, field) {
 }
 
 /**
+ * Отмечаемый список: полный перечень печатается всегда — гость подписью
+ * подтверждает, что с ним ознакомлен. Сразу под ним отдельной строкой
+ * выделено то, что он отметил у себя: это заменяет обведённые ручкой
+ * пункты бумажной анкеты и сразу бросается мастеру в глаза.
+ */
+function drawChecklist(layout, field, values) {
+  const indent = 12;
+  const textX = MARGIN.left + indent;
+  const textWidth = CONTENT_WIDTH - indent;
+
+  const marked = Array.isArray(values[field.name]) ? values[field.name] : [];
+
+  const title = wrapText(field.label, layout.fonts.bold, 9.5, textWidth);
+  const body = wrapText(field.options.join('; ') + '.', layout.fonts.regular, 8.5, textWidth);
+
+  const answer = marked.length > 0 ? `Отмечено гостем: ${marked.join('; ')}` : 'Гость ничего не отметил';
+  const answerFont = marked.length > 0 ? layout.fonts.bold : layout.fonts.regular;
+  const answerColor = marked.length > 0 ? COLOR.danger : COLOR.muted;
+  const answerLines = wrapText(answer, answerFont, 9, textWidth);
+
+  const height = title.length * 12 + body.length * 11 + answerLines.length * 12 + 20;
+  layout.ensure(height);
+
+  const top = layout.y;
+
+  title.forEach((line, index) => {
+    layout.page.drawText(line, {
+      x: textX,
+      y: top - 10 - index * 12,
+      size: 9.5,
+      font: layout.fonts.bold,
+      color: COLOR.text,
+    });
+  });
+
+  const bodyTop = top - 10 - title.length * 12;
+  body.forEach((line, index) => {
+    layout.page.drawText(line, {
+      x: textX,
+      y: bodyTop - index * 11,
+      size: 8.5,
+      font: layout.fonts.regular,
+      color: COLOR.muted,
+    });
+  });
+
+  const answerTop = bodyTop - body.length * 11 - 6;
+  answerLines.forEach((line, index) => {
+    layout.page.drawText(line, {
+      x: textX,
+      y: answerTop - index * 12,
+      size: 9,
+      font: answerFont,
+      color: answerColor,
+    });
+  });
+
+  layout.page.drawLine({
+    start: { x: MARGIN.left + 2, y: top - 1 },
+    end: { x: MARGIN.left + 2, y: answerTop - answerLines.length * 12 + 6 },
+    thickness: 1.5,
+    color: marked.length > 0 ? COLOR.danger : COLOR.rule,
+  });
+
+  layout.y = top - height;
+}
+
+/**
  * Согласия печатаются во всю ширину страницы с отметкой [X] или [  ].
  * Текст согласия — юридически значимая часть документа, поэтому он
  * приводится полностью, а не сокращается до колонки со значением.
@@ -480,7 +549,9 @@ export async function renderSubmissionPdf({ form, values, signaturePng, meta, fo
       // в документ не попадают — иначе в PDF будут пустые строки.
       if (!isFieldVisible(field, values)) continue;
 
-      if (field.type === 'checkbox') {
+      if (field.type === 'checklist') {
+        drawChecklist(layout, field, values);
+      } else if (field.type === 'checkbox') {
         drawConsent(layout, field, values);
       } else {
         drawField(layout, field, values);
