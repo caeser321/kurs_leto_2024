@@ -3,11 +3,13 @@
  *
  * Модуль не знает, куда уйдут данные: в веб-версии их принимает сервер,
  * в Android-приложении PDF собирается прямо на планшете. Поэтому здесь
- * только разметка, сбор значений и подсветка ошибок.
+ * только разметка, сбор ответов, показ полей по условию и подсветка ошибок.
  */
 
+import { isStaticField, isFieldVisible, iterateFields } from '../../src/schema.js';
+
 /** Поля, которым тесно в половине строки. */
-const WIDE_TYPES = new Set(['textarea', 'checkbox', 'radio']);
+const WIDE_TYPES = new Set(['textarea', 'checkbox', 'radio', 'multiselect', 'notice']);
 
 /** Строит разметку всех секций анкеты внутри container. */
 export function buildForm(container, schema) {
@@ -22,10 +24,17 @@ export function buildForm(container, schema) {
     heading.textContent = section.title;
     wrapper.append(heading);
 
+    if (section.note) {
+      const note = document.createElement('p');
+      note.className = 'section__note';
+      note.textContent = section.note;
+      wrapper.append(note);
+    }
+
     const grid = document.createElement('div');
     grid.className = 'fields';
     for (const field of section.fields || []) {
-      grid.append(renderField(container, field));
+      grid.append(renderField(container, schema, field));
     }
     wrapper.append(grid);
 
@@ -33,13 +42,33 @@ export function buildForm(container, schema) {
   }
 
   container.append(fragment);
+
+  // Поля с условием показа переключаются при любом изменении ответов.
+  container.addEventListener('change', () => refreshVisibility(container, schema));
+  container.addEventListener('input', () => refreshVisibility(container, schema));
+  refreshVisibility(container, schema);
 }
 
-function renderField(container, field) {
+function renderField(container, schema, field) {
   const wrapper = document.createElement('div');
   wrapper.className = 'field';
   wrapper.dataset.field = field.name;
   if (WIDE_TYPES.has(field.type) || field.wide) wrapper.classList.add('field--wide');
+
+  if (field.type === 'notice') {
+    wrapper.classList.add('notice');
+    if (field.label) {
+      const title = document.createElement('p');
+      title.className = 'notice__title';
+      title.textContent = field.label;
+      wrapper.append(title);
+    }
+    const text = document.createElement('p');
+    text.className = 'notice__text';
+    text.textContent = field.text || '';
+    wrapper.append(text);
+    return wrapper;
+  }
 
   if (field.type !== 'checkbox') wrapper.append(renderLabel(field));
   wrapper.append(renderControl(container, field));
@@ -104,17 +133,20 @@ function renderControl(container, field) {
     return label;
   }
 
-  if (field.type === 'radio') {
+  if (field.type === 'radio' || field.type === 'multiselect') {
+    // Множественный выбор отличается от одиночного только типом флажка:
+    // разметка и поведение одинаковые.
+    const multiple = field.type === 'multiselect';
     const group = document.createElement('div');
     group.className = 'choices';
-    group.setAttribute('role', 'radiogroup');
+    group.setAttribute('role', multiple ? 'group' : 'radiogroup');
 
     field.options.forEach((option, index) => {
       const label = document.createElement('label');
       label.className = 'choice';
 
       const input = document.createElement('input');
-      input.type = 'radio';
+      input.type = multiple ? 'checkbox' : 'radio';
       input.name = field.name;
       input.value = option;
       if (index === 0) input.id = id;
@@ -170,22 +202,53 @@ function renderControl(container, field) {
   return input;
 }
 
-/** Собирает значения всех полей анкеты в объект. */
+/** Собирает ответы на все поля анкеты в объект. */
 export function collectValues(formElement, schema) {
   const values = {};
   const data = new FormData(formElement);
 
-  for (const section of schema.sections) {
-    for (const field of section.fields || []) {
-      if (field.type === 'checkbox') {
-        values[field.name] = formElement.elements[field.name]?.checked === true;
-      } else {
-        values[field.name] = (data.get(field.name) || '').toString();
-      }
+  for (const field of iterateFields(schema)) {
+    if (isStaticField(field)) continue;
+
+    if (field.type === 'checkbox') {
+      values[field.name] = formElement.elements[field.name]?.checked === true;
+    } else if (field.type === 'multiselect') {
+      values[field.name] = data.getAll(field.name).map(String);
+    } else {
+      values[field.name] = (data.get(field.name) || '').toString();
     }
   }
 
   return values;
+}
+
+/**
+ * Показывает и прячет поля с условием showIf.
+ * У скрытого поля снимается подсветка ошибки: гость его не видит,
+ * значит и «исправлять» ему нечего.
+ */
+export function refreshVisibility(container, schema) {
+  const formElement = container.closest('form');
+  if (!formElement) return;
+
+  const values = collectValues(formElement, schema);
+
+  for (const field of iterateFields(schema)) {
+    if (!field.showIf) continue;
+
+    const wrapper = container.querySelector(`[data-field="${CSS.escape(field.name)}"]`);
+    if (!wrapper) continue;
+
+    const visible = isFieldVisible(field, values);
+    if (wrapper.hidden === !visible) continue;
+
+    wrapper.hidden = !visible;
+    if (!visible) {
+      wrapper.classList.remove('field--invalid');
+      const errorNode = wrapper.querySelector(`[data-error-for="${CSS.escape(field.name)}"]`);
+      if (errorNode) hideError(errorNode);
+    }
+  }
 }
 
 export function showError(node, message) {

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import { validateSubmission, buildClientName } from './schema.js';
 import { loadForm } from './form-file.node.js';
@@ -123,6 +124,17 @@ export async function createApp(config) {
       next(error);
     }
   });
+
+  // Общие модули, которые подключает form-ui.js в браузере.
+  // В Android-приложении их вкомпилировывает сборщик, а веб-версия
+  // грузит их по сети, поэтому раздаём их явным списком — без остальных
+  // файлов src/, которым в браузере делать нечего.
+  for (const name of ['schema.js', 'naming.js']) {
+    app.get(`/src/${name}`, (req, res) => {
+      res.type('text/javascript');
+      res.sendFile(path.join(config.projectRoot, 'src', name));
+    });
+  }
 
   app.use(express.static(config.publicDir, { extensions: ['html'] }));
 

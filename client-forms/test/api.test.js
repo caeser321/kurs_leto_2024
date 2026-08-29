@@ -15,19 +15,30 @@ const validValues = {
   firstName: 'Пётр',
   middleName: 'Сергеевич',
   birthDate: '1990-05-17',
-  gender: 'Мужской',
   phone: '+7 (900) 123-45-67',
-  email: 'ivanov@example.com',
-  address: 'г. Москва, ул. Ленина, д. 1',
-  docType: 'Паспорт РФ',
-  docNumber: '4510 123456',
-  docIssuedBy: 'ОВД района Люблино города Москвы',
-  docIssueDate: '2010-06-01',
-  service: 'Первичная консультация',
-  source: 'Поиск в интернете',
-  comment: 'Прошу связаться со мной в будний день после 18:00.',
+  confirmContra: true,
+  confirmRisk: true,
   consentPersonalData: true,
-  consentMarketing: false,
+  allergy: 'Да',
+  allergyDetails: 'Мёд и цитрусовые',
+  skinFeatures: 'Нет',
+  boneInjuries: 'Нет',
+  spineConditions: 'Да',
+  spineConditionsDetails: 'Межпозвонковая грыжа L4–L5',
+  surgeries: 'Нет',
+  pregnancy: 'Нет',
+  intoxication: 'Нет',
+  source: ['Instagram', 'Рекомендация'],
+  firstTime: 'Нет',
+  massageType: 'Классика',
+  headMassage: 'Да',
+  music: ['Jazz', 'Chillout'],
+  musicOwn: 'Что-нибудь спокойное',
+  communication: 'Тишина',
+  oil: 'Цитрус',
+  underwear: 'Да, нужно',
+  drink: 'Чай зелёный',
+  drinkAdditions: ['Лимон', 'Сахар'],
 };
 
 /** Поднимает приложение на случайном порту поверх временного общего пространства. */
@@ -118,14 +129,14 @@ test('отклоняет анкету без обязательных полей
   const server = await startServer();
   try {
     const response = await post(server, {
-      values: { ...validValues, lastName: '', phone: '' },
+      values: { ...validValues, lastName: '', massageType: '' },
       signature: PNG_1PX,
     });
 
     assert.equal(response.status, 400);
     const result = await response.json();
     assert.equal(result.errors.lastName, 'Обязательное поле');
-    assert.equal(result.errors.phone, 'Обязательное поле');
+    assert.equal(result.errors.massageType, 'Обязательное поле');
 
     const { total } = await (await fetch(server.url('/api/submissions'))).json();
     assert.equal(total, 0, 'некорректная анкета не должна сохраняться');
@@ -204,6 +215,26 @@ test('отдаёт страницу анкеты', async () => {
     const response = await fetch(server.url('/'));
     assert.equal(response.status, 200);
     assert.match(await response.text(), /signature-canvas/);
+  } finally {
+    await server.close();
+  }
+});
+
+test('отдаёт браузеру общие модули формы', async () => {
+  const server = await startServer();
+  try {
+    // form-ui.js подключает эти модули напрямую; без них форма
+    // не строится и страница остаётся пустой.
+    for (const name of ['schema.js', 'naming.js']) {
+      const response = await fetch(server.url(`/src/${name}`));
+      assert.equal(response.status, 200, `${name} должен отдаваться`);
+      assert.match(response.headers.get('content-type'), /javascript/);
+      assert.match(await response.text(), /export/);
+    }
+
+    // Остальные файлы src/ браузеру не нужны и наружу не отдаются.
+    const closed = await fetch(server.url('/src/storage.js'));
+    assert.equal(closed.status, 404);
   } finally {
     await server.close();
   }

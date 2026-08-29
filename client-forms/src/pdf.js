@@ -1,6 +1,6 @@
 import { PDFDocument, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import { formatValue } from './schema.js';
+import { formatValue, isFieldVisible, isStaticField } from './schema.js';
 
 const A4 = { width: 595.28, height: 841.89 };
 
@@ -212,6 +212,58 @@ function drawField(layout, field, values) {
 }
 
 /**
+ * Информационный блок (противопоказания, пояснения к услуге).
+ * Гость на него не отвечает, но текст обязан быть в документе:
+ * подписывая анкету, он подтверждает, что с ним ознакомлен.
+ */
+function drawNotice(layout, field) {
+  // Текст врезки сдвинут вправо, чтобы вертикальная черта шла по полю,
+  // а не перечёркивала первые буквы заголовка.
+  const indent = 12;
+  const textX = MARGIN.left + indent;
+  const textWidth = CONTENT_WIDTH - indent;
+
+  const title = field.label ? wrapText(field.label, layout.fonts.bold, 9.5, textWidth) : [];
+  const body = wrapText(field.text || '', layout.fonts.regular, 8.5, textWidth);
+
+  const height = title.length * 12 + body.length * 11 + 14;
+  layout.ensure(height);
+
+  const top = layout.y;
+
+  title.forEach((line, index) => {
+    layout.page.drawText(line, {
+      x: textX,
+      y: top - 10 - index * 12,
+      size: 9.5,
+      font: layout.fonts.bold,
+      color: COLOR.text,
+    });
+  });
+
+  const bodyTop = top - 10 - title.length * 12;
+  body.forEach((line, index) => {
+    layout.page.drawText(line, {
+      x: textX,
+      y: bodyTop - index * 11,
+      size: 8.5,
+      font: layout.fonts.regular,
+      color: COLOR.muted,
+    });
+  });
+
+  // Вертикальная черта слева — чтобы блок читался как врезка, а не как ответ.
+  layout.page.drawLine({
+    start: { x: MARGIN.left + 2, y: top - 1 },
+    end: { x: MARGIN.left + 2, y: bodyTop - body.length * 11 + 5 },
+    thickness: 1.5,
+    color: COLOR.accent,
+  });
+
+  layout.y = top - height;
+}
+
+/**
  * Согласия печатаются во всю ширину страницы с отметкой [X] или [  ].
  * Текст согласия — юридически значимая часть документа, поэтому он
  * приводится полностью, а не сокращается до колонки со значением.
@@ -417,7 +469,17 @@ export async function renderSubmissionPdf({ form, values, signaturePng, meta, fo
 
   for (const section of form.sections) {
     drawSection(layout, section);
+
     for (const field of section.fields || []) {
+      if (isStaticField(field)) {
+        drawNotice(layout, field);
+        continue;
+      }
+
+      // Вопросы, которых гость не видел (условие showIf не выполнено),
+      // в документ не попадают — иначе в PDF будут пустые строки.
+      if (!isFieldVisible(field, values)) continue;
+
       if (field.type === 'checkbox') {
         drawConsent(layout, field, values);
       } else {

@@ -18,19 +18,30 @@ const baseValues = {
   firstName: 'Пётр',
   middleName: 'Сергеевич',
   birthDate: '1990-05-17',
-  gender: 'Мужской',
   phone: '+7 (900) 123-45-67',
-  email: 'ivanov@example.com',
-  address: 'г. Москва, ул. Ленина, д. 1',
-  docType: 'Паспорт РФ',
-  docNumber: '4510 123456',
-  docIssuedBy: 'ОВД района Люблино города Москвы',
-  docIssueDate: '2010-06-01',
-  service: 'Первичная консультация',
-  source: 'Поиск в интернете',
-  comment: 'Прошу связаться со мной в будний день.',
+  confirmContra: true,
+  confirmRisk: true,
   consentPersonalData: true,
-  consentMarketing: false,
+  allergy: 'Да',
+  allergyDetails: 'Мёд и цитрусовые',
+  skinFeatures: 'Нет',
+  boneInjuries: 'Нет',
+  spineConditions: 'Да',
+  spineConditionsDetails: 'Межпозвонковая грыжа L4–L5',
+  surgeries: 'Нет',
+  pregnancy: 'Нет',
+  intoxication: 'Нет',
+  source: ['Instagram', 'Рекомендация'],
+  firstTime: 'Нет',
+  massageType: 'Классика',
+  headMassage: 'Да',
+  music: ['Jazz', 'Chillout'],
+  musicOwn: 'Что-нибудь спокойное',
+  communication: 'Тишина',
+  oil: 'Цитрус',
+  underwear: 'Да, нужно',
+  drink: 'Чай зелёный',
+  drinkAdditions: ['Лимон', 'Сахар'],
 };
 
 async function render(values = baseValues) {
@@ -98,8 +109,8 @@ test('создаёт корректный PDF с кириллицей', async ()
   assert.equal(Buffer.from(bytes.subarray(0, 5)).toString(), '%PDF-');
 
   const doc = await PDFDocument.load(bytes);
-  // Штатная анкета занимает две страницы: данные и блок подписи.
-  assert.equal(doc.getPageCount(), 2);
+  // Анкета с противопоказаниями занимает несколько страниц.
+  assert.ok(doc.getPageCount() >= 2, `страниц: ${doc.getPageCount()}`);
   assert.match(doc.getTitle(), /Иванов Пётр Сергеевич/);
 
   const [page] = doc.getPages();
@@ -123,11 +134,11 @@ test('создаёт корректный PDF с кириллицей', async ()
 test('длинная анкета переносится на несколько страниц', async () => {
   const bytes = await render({
     ...baseValues,
-    comment: 'Очень подробное описание обращения клиента. '.repeat(60),
+    allergyDetails: 'Очень подробное описание аллергических реакций гостя. '.repeat(60),
   });
 
   const doc = await PDFDocument.load(bytes);
-  assert.ok(doc.getPageCount() >= 3, `ожидалось больше страниц, получено ${doc.getPageCount()}`);
+  assert.ok(doc.getPageCount() >= 4, `ожидалось больше страниц, получено ${doc.getPageCount()}`);
 });
 
 test('анкета без подписи всё равно формируется', async () => {
@@ -149,7 +160,7 @@ test('анкета без подписи всё равно формируетс�
 });
 
 test('незаполненные необязательные поля не ломают документ', async () => {
-  const bytes = await render({ ...baseValues, email: '', address: '', comment: '' });
+  const bytes = await render({ ...baseValues, musicOwn: '', music: [], phone: '' });
   const doc = await PDFDocument.load(bytes);
   assert.ok(doc.getPageCount() >= 1);
 });

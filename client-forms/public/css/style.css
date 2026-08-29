@@ -209,6 +209,29 @@ textarea:focus {
   line-height: 1.45;
 }
 
+/* --- Информационный блок (противопоказания и пояснения) --- */
+
+.notice {
+  padding: 14px 16px;
+  background: #f7f9fc;
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+}
+
+.notice__title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.notice__text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 /* --- Подпись --- */
 
 .signature {

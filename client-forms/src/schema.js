@@ -1,5 +1,15 @@
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** Поля без ответа: показывают текст на экране и печатаются в PDF. */
+const STATIC_TYPES = new Set(['notice']);
+
+/** Поля, ответ на которые — список выбранных вариантов. */
+const MULTI_TYPES = new Set(['multiselect']);
+
+export function isStaticField(field) {
+  return STATIC_TYPES.has(field.type);
+}
+
 /**
  * Проверяет, что описание анкеты пригодно к использованию.
  * Вызывается и на сервере при чтении файла, и при сборке приложения,
@@ -21,9 +31,39 @@ export function validateFormDefinition(form, source = 'анкета') {
       throw new Error(`Анкета ${source}: поле "${field.name}" объявлено более одного раза`);
     }
     seen.add(field.name);
-    if ((field.type === 'select' || field.type === 'radio') && !Array.isArray(field.options)) {
+
+    const needsOptions = field.type === 'select' || field.type === 'radio' || MULTI_TYPES.has(field.type);
+    if (needsOptions && !Array.isArray(field.options)) {
       throw new Error(`Анкета ${source}: у поля "${field.name}" типа ${field.type} нет options`);
     }
+
+    if (field.type === 'notice' && !field.text && !field.label) {
+      throw new Error(`Анкета ${source}: у блока "${field.name}" нет текста (text)`);
+    }
+  }
+
+  // Условия показа проверяем отдельно: поле, от которого зависит показ,
+  // должно быть объявлено раньше зависимого — иначе условие не сработает.
+  const declared = [];
+  for (const field of iterateFields(form)) {
+    if (field.showIf) {
+      const target = field.showIf.field;
+      if (!target) {
+        throw new Error(`Анкета ${source}: в showIf поля "${field.name}" не указано field`);
+      }
+      if (!seen.has(target)) {
+        throw new Error(
+          `Анкета ${source}: поле "${field.name}" зависит от несуществующего поля "${target}"`,
+        );
+      }
+      if (!declared.includes(target)) {
+        throw new Error(
+          `Анкета ${source}: поле "${field.name}" зависит от поля "${target}", ` +
+            'которое объявлено ниже — переставьте его выше',
+        );
+      }
+    }
+    declared.push(field.name);
   }
 
   return form;
@@ -37,7 +77,57 @@ export function* iterateFields(form) {
 }
 
 /**
- * Проверяет присланные клиентом значения по описанию анкеты.
+ * Нужно ли показывать поле при текущих ответах.
+ *
+ * Поддерживаются три условия:
+ *   "showIf": { "field": "allergy", "equals": "Да" }
+ *   "showIf": { "field": "drink", "in": ["Чай зелёный", "Какао"] }
+ *   "showIf": { "field": "drink", "notIn": ["Какао", "Ничего"] }
+ *
+ * Для notIn пустой ответ считается «ещё не выбрано», и поле скрыто:
+ * добавки к напитку не нужны, пока напиток не выбран.
+ */
+export function isFieldVisible(field, values) {
+  const rule = field.showIf;
+  if (!rule) return true;
+
+  const actual = values?.[rule.field];
+
+  if (rule.equals !== undefined) return actual === rule.equals;
+  if (Array.isArray(rule.in)) return rule.in.includes(actual);
+  if (Array.isArray(rule.notIn)) {
+    if (actual === undefined || actual === null || actual === '') return false;
+    return !rule.notIn.includes(actual);
+  }
+
+  return true;
+}
+
+/** Значение поля, когда ответа нет. */
+function emptyValue(field) {
+  if (field.type === 'checkbox') return false;
+  if (MULTI_TYPES.has(field.type)) return [];
+  return '';
+}
+
+function normalizeValue(field, raw) {
+  if (field.type === 'checkbox') {
+    return raw === true || raw === 'true' || raw === 'on' || raw === 1;
+  }
+
+  if (MULTI_TYPES.has(field.type)) {
+    const list = Array.isArray(raw) ? raw : raw == null || raw === '' ? [] : [raw];
+    return list
+      .filter((item) => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return typeof raw === 'string' ? raw.trim() : raw == null ? '' : String(raw).trim();
+}
+
+/**
+ * Проверяет присланные ответы по описанию анкеты.
  * Возвращает нормализованные значения и список ошибок по полям.
  */
 export function validateSubmission(form, input) {
@@ -45,31 +135,45 @@ export function validateSubmission(form, input) {
   const values = {};
   const source = input && typeof input === 'object' ? input : {};
 
+  // Шаг 1: приводим ответы к нужному виду — от них зависят условия показа.
   for (const field of iterateFields(form)) {
-    const raw = source[field.name];
+    if (isStaticField(field)) continue;
+    values[field.name] = normalizeValue(field, source[field.name]);
+  }
 
-    if (field.type === 'checkbox') {
-      const checked = raw === true || raw === 'true' || raw === 'on' || raw === 1;
-      values[field.name] = checked;
-      if (field.required && !checked) {
-        errors[field.name] = 'Необходимо отметить этот пункт';
-      }
+  // Шаг 2: проверяем только то, что гость реально видел на экране.
+  for (const field of iterateFields(form)) {
+    if (isStaticField(field)) continue;
+
+    if (!isFieldVisible(field, values)) {
+      // Скрытое поле не требует ответа и не попадает в документ,
+      // даже если значение осталось от предыдущего выбора.
+      values[field.name] = emptyValue(field);
       continue;
     }
 
-    const value = typeof raw === 'string' ? raw.trim() : raw == null ? '' : String(raw).trim();
-    values[field.name] = value;
-
-    if (!value) {
-      if (field.required) errors[field.name] = 'Обязательное поле';
-      continue;
-    }
-
-    const error = validateValue(field, value);
+    const error = validateField(field, values[field.name]);
     if (error) errors[field.name] = error;
   }
 
   return { valid: Object.keys(errors).length === 0, errors, values };
+}
+
+function validateField(field, value) {
+  if (field.type === 'checkbox') {
+    if (field.required && !value) return 'Необходимо отметить этот пункт';
+    return null;
+  }
+
+  if (MULTI_TYPES.has(field.type)) {
+    if (value.length === 0) return field.required ? 'Выберите хотя бы один вариант' : null;
+    if (value.some((item) => !field.options.includes(item))) return 'Выберите значение из списка';
+    return null;
+  }
+
+  if (!value) return field.required ? 'Обязательное поле' : null;
+
+  return validateValue(field, value);
 }
 
 function validateValue(field, value) {
@@ -97,18 +201,24 @@ function validateValue(field, value) {
   return null;
 }
 
-/** Приводит значение поля к виду, пригодному для печати в PDF и в архиве. */
+/** Приводит ответ к виду, пригодному для печати в PDF и в архиве. */
 export function formatValue(field, value) {
   if (field.type === 'checkbox') return value ? 'Да' : 'Нет';
+
+  if (MULTI_TYPES.has(field.type)) {
+    return Array.isArray(value) && value.length > 0 ? value.join(', ') : '—';
+  }
+
   if (field.type === 'date' && DATE_RE.test(String(value || ''))) {
     const [year, month, day] = String(value).split('-');
     return `${day}.${month}.${year}`;
   }
+
   return value === '' || value == null ? '—' : String(value);
 }
 
 /**
- * Собирает читаемое имя клиента из полей анкеты — используется в имени файла
+ * Собирает читаемое имя гостя из полей анкеты — используется в имени файла
  * и в списке архива. Опирается на типовые названия полей, а если их нет,
  * берёт первое заполненное текстовое поле.
  */

@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateSubmission, formatValue, buildClientName } from '../src/schema.js';
+import {
+  validateSubmission,
+  formatValue,
+  buildClientName,
+  validateFormDefinition,
+  isFieldVisible,
+} from '../src/schema.js';
 import { loadForm } from '../src/form-file.node.js';
 import { config } from '../src/config.js';
 
@@ -152,4 +158,234 @@ test('дублирующиеся имена полей отклоняются п
   );
 
   await assert.rejects(() => loadForm(file), /более одного раза/);
+});
+
+// --- Множественный выбор ---
+
+const multiForm = {
+  id: 'multi',
+  title: 'Тест',
+  sections: [
+    {
+      title: 'Секция',
+      fields: [
+        {
+          name: 'source',
+          label: 'Откуда узнали',
+          type: 'multiselect',
+          required: false,
+          options: ['Instagram', 'Telegram', 'Рекомендация'],
+        },
+        {
+          name: 'music',
+          label: 'Музыка',
+          type: 'multiselect',
+          required: true,
+          options: ['Jazz', 'Техно'],
+        },
+      ],
+    },
+  ],
+};
+
+test('множественный выбор принимает несколько вариантов', () => {
+  const result = validateSubmission(multiForm, {
+    source: ['Instagram', 'Рекомендация'],
+    music: ['Jazz'],
+  });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.values.source, ['Instagram', 'Рекомендация']);
+});
+
+test('множественный выбор без ответа — пустой список', () => {
+  const result = validateSubmission(multiForm, { music: ['Jazz'] });
+  assert.deepEqual(result.values.source, []);
+});
+
+test('обязательный множественный выбор требует хотя бы один вариант', () => {
+  const result = validateSubmission(multiForm, { music: [] });
+  assert.equal(result.valid, false);
+  assert.match(result.errors.music, /хотя бы один/);
+});
+
+test('множественный выбор отклоняет вариант не из списка', () => {
+  const result = validateSubmission(multiForm, { music: ['Jazz', 'Шансон'] });
+  assert.equal(result.valid, false);
+  assert.match(result.errors.music, /из списка/);
+});
+
+test('одиночное значение приводится к списку', () => {
+  const result = validateSubmission(multiForm, { music: 'Jazz' });
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.values.music, ['Jazz']);
+});
+
+test('форматирует множественный выбор для печати', () => {
+  const field = { type: 'multiselect' };
+  assert.equal(formatValue(field, ['Лимон', 'Сахар']), 'Лимон, Сахар');
+  assert.equal(formatValue(field, []), '—');
+});
+
+// --- Поля, зависящие от других ответов ---
+
+const conditionalForm = {
+  id: 'cond',
+  title: 'Тест',
+  sections: [
+    {
+      title: 'Секция',
+      fields: [
+        { name: 'allergy', label: 'Аллергия?', type: 'radio', required: true, options: ['Да', 'Нет'] },
+        {
+          name: 'allergyDetails',
+          label: 'На что',
+          type: 'textarea',
+          required: true,
+          showIf: { field: 'allergy', equals: 'Да' },
+        },
+        {
+          name: 'drink',
+          label: 'Напиток',
+          type: 'radio',
+          required: false,
+          options: ['Чай зелёный', 'Какао', 'Ничего'],
+        },
+        {
+          name: 'additions',
+          label: 'Добавки',
+          type: 'multiselect',
+          required: false,
+          options: ['Лимон', 'Сахар'],
+          showIf: { field: 'drink', notIn: ['Какао', 'Ничего'] },
+        },
+      ],
+    },
+  ],
+};
+
+test('описание обязательно, когда ответили «Да»', () => {
+  const result = validateSubmission(conditionalForm, { allergy: 'Да' });
+  assert.equal(result.valid, false);
+  assert.equal(result.errors.allergyDetails, 'Обязательное поле');
+});
+
+test('описание не требуется, когда ответили «Нет»', () => {
+  const result = validateSubmission(conditionalForm, { allergy: 'Нет' });
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.allergyDetails, undefined);
+});
+
+test('ответ на скрытое поле стирается', () => {
+  // Гость написал описание, потом передумал и выбрал «Нет».
+  const result = validateSubmission(conditionalForm, {
+    allergy: 'Нет',
+    allergyDetails: 'Мёд',
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.values.allergyDetails, '', 'скрытый ответ не должен попадать в документ');
+});
+
+test('добавки доступны только к чаю', () => {
+  const withTea = validateSubmission(conditionalForm, {
+    allergy: 'Нет',
+    drink: 'Чай зелёный',
+    additions: ['Лимон'],
+  });
+  assert.deepEqual(withTea.values.additions, ['Лимон']);
+
+  for (const drink of ['Какао', 'Ничего', '']) {
+    const result = validateSubmission(conditionalForm, {
+      allergy: 'Нет',
+      drink,
+      additions: ['Лимон'],
+    });
+    assert.deepEqual(result.values.additions, [], `добавки не должны сохраняться при «${drink}»`);
+  }
+});
+
+test('условие показа считается по правилам showIf', () => {
+  const details = conditionalForm.sections[0].fields[1];
+  assert.equal(isFieldVisible(details, { allergy: 'Да' }), true);
+  assert.equal(isFieldVisible(details, { allergy: 'Нет' }), false);
+  assert.equal(isFieldVisible(details, {}), false);
+
+  const additions = conditionalForm.sections[0].fields[3];
+  assert.equal(isFieldVisible(additions, { drink: 'Чай зелёный' }), true);
+  assert.equal(isFieldVisible(additions, { drink: 'Какао' }), false);
+  assert.equal(isFieldVisible(additions, { drink: '' }), false);
+});
+
+// --- Информационные блоки ---
+
+test('блоки notice не требуют ответа и не попадают в значения', () => {
+  const withNotice = {
+    id: 'n',
+    title: 'Тест',
+    sections: [
+      {
+        title: 'Секция',
+        fields: [
+          { name: 'info', type: 'notice', label: 'Противопоказания', text: 'Длинный текст' },
+          { name: 'ok', label: 'Согласен', type: 'checkbox', required: true },
+        ],
+      },
+    ],
+  };
+
+  const result = validateSubmission(withNotice, { ok: true });
+  assert.equal(result.valid, true);
+  assert.equal('info' in result.values, false);
+});
+
+// --- Проверки описания анкеты ---
+
+test('множественный выбор без options отклоняется', () => {
+  assert.throws(
+    () =>
+      validateFormDefinition({
+        title: 'Т',
+        sections: [{ title: 'A', fields: [{ name: 'a', label: 'A', type: 'multiselect' }] }],
+      }),
+    /нет options/,
+  );
+});
+
+test('showIf на несуществующее поле отклоняется', () => {
+  assert.throws(
+    () =>
+      validateFormDefinition({
+        title: 'Т',
+        sections: [
+          {
+            title: 'A',
+            fields: [{ name: 'a', label: 'A', type: 'text', showIf: { field: 'нет', equals: 'Да' } }],
+          },
+        ],
+      }),
+    /несуществующего поля/,
+  );
+});
+
+test('showIf на поле ниже по анкете отклоняется', () => {
+  assert.throws(
+    () =>
+      validateFormDefinition({
+        title: 'Т',
+        sections: [
+          {
+            title: 'A',
+            fields: [
+              { name: 'a', label: 'A', type: 'text', showIf: { field: 'b', equals: 'Да' } },
+              { name: 'b', label: 'B', type: 'radio', options: ['Да', 'Нет'] },
+            ],
+          },
+        ],
+      }),
+    /объявлено ниже/,
+  );
+});
+
+test('штатная анкета проходит проверку описания', async () => {
+  const anketa = await loadForm(config.formFile);
+  assert.doesNotThrow(() => validateFormDefinition(anketa, 'anketa.json'));
 });
