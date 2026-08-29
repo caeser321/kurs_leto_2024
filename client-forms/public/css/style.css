@@ -1,0 +1,454 @@
+:root {
+  --bg: #eef1f6;
+  --surface: #ffffff;
+  --ink: #161920;
+  --muted: #5b6472;
+  --accent: #1f5fa9;
+  --accent-dark: #17497f;
+  --danger: #b42318;
+  --border: #d5dae2;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+.page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.page__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.page__org {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.page__title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.card--status,
+.card--success {
+  text-align: center;
+}
+
+.section {
+  padding: 20px 0 4px;
+  border-top: 1px solid var(--border);
+}
+
+.section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.section__title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  color: var(--accent);
+}
+
+.section__note {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.fields {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 14px;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.field__required {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
+.field__hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field__error {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+input[type='text'],
+input[type='tel'],
+input[type='email'],
+input[type='date'],
+input[type='number'],
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--ink);
+  background: #fbfcfe;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  /* 16px и крупные поля: iPad не зумит страницу при фокусе */
+  min-height: 48px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 95, 169, 0.15);
+}
+
+.field--invalid input,
+.field--invalid select,
+.field--invalid textarea {
+  border-color: var(--danger);
+  background: #fff6f5;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfcfe;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.choice input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+  flex: none;
+}
+
+.choice--block {
+  align-items: flex-start;
+}
+
+.choice--block span {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* --- Информационный блок (противопоказания и пояснения) --- */
+
+.notice {
+  padding: 14px 16px;
+  background: #f7f9fc;
+  border-left: 3px solid var(--border);
+  border-radius: 8px;
+}
+
+.notice__title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.notice__text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* --- Подпись --- */
+
+.signature {
+  position: relative;
+  background: #fbfcfe;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.signature__canvas {
+  display: block;
+  width: 100%;
+  height: 220px;
+  /* без этого браузер прокручивает страницу вместо рисования */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.signature__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa4b2;
+  font-size: 15px;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.signature__placeholder[hidden] {
+  display: none;
+}
+
+.signature__baseline {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 46px;
+  border-bottom: 1px dashed #c6cedb;
+  pointer-events: none;
+}
+
+.signature__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.signature__hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.signature__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Кнопки --- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 20px;
+  min-height: 48px;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.button--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.button--ghost {
+  background: #fff;
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.button--ghost:hover:not(:disabled) {
+  border-color: #b9c1cd;
+}
+
+/* Компактная кнопка внутри строки таблицы. */
+.button--small {
+  padding: 8px 14px;
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.actions__note {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.actions .button--primary {
+  padding: 16px 24px;
+  font-size: 17px;
+}
+
+/* --- Успешное сохранение --- */
+
+.success__title {
+  margin: 0 0 8px;
+  color: #0a7b45;
+}
+
+.success__text {
+  margin: 0 0 20px;
+  color: var(--muted);
+}
+
+.success__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* --- Архив --- */
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toolbar input {
+  flex: 1;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.table td.nowrap {
+  white-space: nowrap;
+}
+
+.table__empty {
+  padding: 32px 10px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 16px 12px 48px;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+
+  .page__title {
+    font-size: 23px;
+  }
+
+  .signature__canvas {
+    height: 190px;
+  }
+}

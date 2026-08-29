@@ -1,0 +1,11 @@
+{
+  "appId": "ru.anketa.client",
+  "appName": "Анкета клиента",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

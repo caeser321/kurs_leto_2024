@@ -1,0 +1,5 @@
+node_modules/
+
+# Собирается командой npm run build и попадает в APK при cap sync.
+# Внутри android/ сгенерированные файлы уже описаны в android/.gitignore.
+www/

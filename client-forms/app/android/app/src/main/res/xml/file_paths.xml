@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+        Анкеты лежат в приватной памяти приложения (Directory.Data -> filesDir).
+        Без этой строки системное меню «Поделиться» падает: FileProvider
+        отказывается отдавать файл, путь к которому не описан здесь.
+    -->
+    <files-path name="app_files" path="." />
+
+    <external-path name="my_images" path="." />
+    <cache-path name="my_cache_images" path="." />
+</paths>

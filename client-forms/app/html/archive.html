@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1f5fa9" />
+    <title>Архив анкет</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page__header">
+        <div>
+          <p class="page__org" id="summary"></p>
+          <h1 class="page__title">Архив анкет</h1>
+        </div>
+        <a class="link" href="index.html">Новая анкета</a>
+      </header>
+
+      <main class="card">
+        <div class="toolbar">
+          <input
+            type="text"
+            id="search"
+            placeholder="Поиск по фамилии или номеру документа"
+            autocomplete="off"
+          />
+          <button type="button" class="button button--ghost" id="share-all">Выгрузить все</button>
+        </div>
+
+        <div class="table-scroll">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Клиент</th>
+                <th>Документ</th>
+                <th>Заполнено</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <p class="table__empty" id="empty" hidden>Пока нет сохранённых анкет.</p>
+      </main>
+    </div>
+
+    <script type="module" src="js/archive.js"></script>
+  </body>
+</html>
